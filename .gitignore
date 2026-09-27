@@ -1,3 +1,60 @@
+# --- Agentcy: this repo is public. Never commit secrets, client or personal data. ---
+# Env files (examples/test fixtures stay committable)
+.env.*
+!.env.example
+!.env.sample
+!.env.test
+!.env.e2e-testing-server
+.envrc*
+# Keys, certificates, credentials
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+*.ppk
+id_rsa*
+id_ed25519*
+id_ecdsa*
+.ssh/
+.aws/
+.secrets/
+secrets/
+credentials*.json
+service-account*.json
+client_secret*.json
+*.tfstate
+*.tfstate.*
+.npmrc
+.netrc
+.pgpass
+kubeconfig*
+# Database dumps, backups, exports
+*.dump
+*.sql.gz
+*.sql.bz2
+*.bak
+*.backup
+*.sqlite
+*.sqlite3
+dump.sql
+backup*.sql
+/backups/
+/dumps/
+/exports/
+# Loose data files at the repo root or in agentcy/ (client lists, exports, docs)
+/*.csv
+/*.xlsx
+/*.xls
+/*.pdf
+/*.docx
+/*.json.bak
+/agentcy/**/*.csv
+/agentcy/**/*.xlsx
+/agentcy/**/*.pdf
+# --- end Agentcy ---
+
 **/**/.env
 .DS_Store
 /.idea
