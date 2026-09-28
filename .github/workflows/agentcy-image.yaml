@@ -5,6 +5,9 @@ name: Agentcy image
 on:
   push:
     branches: [agentcy]
+    # Twenty apps are synced to the workspace, not baked into the image.
+    paths-ignore:
+      - 'agentcy/apps/**'
   workflow_dispatch:
 
 permissions:

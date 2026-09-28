@@ -16,6 +16,11 @@ Every push to `agentcy` runs `.github/workflows/agentcy-image.yaml` and pushes
 `ghcr.io/ethanolle/agentcy-crm:<upstream-version>-<short-sha>` (and the moving tag `agentcy`).
 Deploying that tag to the server is in the Agentcy ops repo: `ops/sops/twenty.md`.
 
+## Apps
+`agentcy/apps/<name>`: our Twenty apps (custom objects, UI). They are synced to the workspace with
+`yarn twenty apply`, not built into the image, so pushes that only touch them skip the image build.
+- `time-tracking`: time entries on opportunities (timer, manual log, billable, invoiced). See its README.
+
 ## Update to a new upstream release
 ```
 git fetch upstream --tags
