@@ -1,5 +1,6 @@
 import { RestApiClient } from 'twenty-client-sdk/rest';
 
+import { type PaymentMethod, type PaymentRecord } from 'src/lib/payment-math';
 import { type Money } from 'src/lib/time-math';
 
 // REST calls the widget makes. They run as the signed-in member (narrowed
@@ -20,6 +21,22 @@ export type TimeEntry = {
 };
 
 export type OpportunityOption = { id: string; name: string };
+
+export type Payment = PaymentRecord & {
+  name: string | null;
+  method: PaymentMethod | null;
+  opportunityId: string | null;
+  createdBy?: { name?: string | null } | null;
+};
+
+export type PaymentInput = {
+  name?: string | null;
+  hours: number;
+  amount?: { amountMicros: number; currencyCode: string } | null;
+  paidOn: string;
+  method?: PaymentMethod | null;
+  opportunityId: string;
+};
 
 export type TimeEntryInput = {
   name?: string | null;
@@ -153,4 +170,20 @@ export const deleteTimeEntry = async (id: string): Promise<void> => {
   await client().delete(`/rest/timeEntries/${id}`, {
     query: { soft_delete: true },
   });
+};
+
+export const fetchOpportunityPayments = async (
+  opportunityId: string,
+): Promise<Payment[]> =>
+  listAll<Payment>('timePayments', {
+    filter: `opportunityId[eq]:${quote(opportunityId)}`,
+    order_by: 'createdAt[AscNullsLast]',
+    depth: 0,
+  });
+
+export const createPayment = async (input: PaymentInput): Promise<Payment> => {
+  const response: { data: { createTimePayment: Payment } } =
+    await client().post('/rest/timePayments', input);
+
+  return response.data.createTimePayment;
 };

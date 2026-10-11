@@ -5,8 +5,11 @@ import {
 } from 'twenty-sdk/define';
 
 import {
+  DEAL_PAYMENTS_WIDGET_VIEW,
   DEAL_TIME_ENTRIES_WIDGET_VIEW,
   OPPORTUNITY_TIME_ENTRIES_FIELD_ID,
+  OPPORTUNITY_PAYMENTS_FIELD_ID,
+  OPPORTUNITY_PAYMENTS_WIDGET_ID,
   OPPORTUNITY_TIME_ENTRIES_WIDGET_ID,
   OPPORTUNITY_TIME_TAB_ID,
   OPPORTUNITY_TIME_TRACKER_WIDGET_ID,
@@ -14,7 +17,7 @@ import {
 } from 'src/constants/universal-identifiers';
 
 // "Time" tab on every opportunity, right after Home: the timer widget on top,
-// the deal's time entries as an editable table below it.
+// then the deal's payments and time entries as editable tables.
 export default definePageLayoutTab({
   universalIdentifier: OPPORTUNITY_TIME_TAB_ID,
   pageLayoutUniversalIdentifier:
@@ -32,6 +35,17 @@ export default definePageLayoutTab({
       configuration: {
         configurationType: 'FRONT_COMPONENT',
         frontComponentUniversalIdentifier: TIME_TRACKER_FRONT_COMPONENT_ID,
+      },
+    },
+    {
+      universalIdentifier: OPPORTUNITY_PAYMENTS_WIDGET_ID,
+      title: 'Payments',
+      type: 'FIELD',
+      configuration: {
+        configurationType: 'FIELD',
+        fieldMetadataId: OPPORTUNITY_PAYMENTS_FIELD_ID,
+        fieldDisplayMode: 'TABLE',
+        viewId: DEAL_PAYMENTS_WIDGET_VIEW.id,
       },
     },
     {

@@ -9,6 +9,7 @@ import {
   useUserId,
 } from 'twenty-sdk/front-component';
 import {
+  IconCreditCard,
   IconPlayerPlay,
   IconPlayerStop,
   IconPlus,
@@ -19,14 +20,26 @@ import { Button } from 'twenty-ui/primitives/input';
 
 import { TIME_TRACKER_FRONT_COMPONENT_ID } from 'src/constants/universal-identifiers';
 import {
+  billingBalance,
+  formatHoursChange,
+  PAYMENT_METHOD_LABELS,
+  parseAmountInput,
+  parsePaidHoursChange,
+  type PaymentMethod,
+  paymentHistory,
+} from 'src/lib/payment-math';
+import {
+  createPayment,
   createTimeEntry,
   deleteTimeEntry,
   fetchOpportunityEntries,
   fetchOpportunityName,
   fetchOpportunityOptions,
+  fetchOpportunityPayments,
   fetchRunningEntries,
   fetchWorkspaceMemberId,
   type OpportunityOption,
+  type Payment,
   type TimeEntry,
   updateTimeEntry,
 } from 'src/lib/time-entries-api';
@@ -210,6 +223,27 @@ const styles = {
     fontSize: 'var(--t-font-size-sm)',
     color: 'var(--t-font-color-tertiary)',
   },
+  history: {
+    display: 'flex',
+    flexDirection: 'column',
+    margin: 0,
+    padding: 0,
+    listStyle: 'none',
+  },
+  historyLine: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '2px',
+    padding: '6px 0',
+    borderTop: '1px solid var(--t-border-color-light)',
+  },
+  historyMain: {
+    display: 'flex',
+    alignItems: 'baseline',
+    gap: '8px',
+    flexWrap: 'wrap',
+    fontVariantNumeric: 'tabular-nums',
+  },
   error: {
     fontSize: 'var(--t-font-size-sm)',
     color: 'var(--t-font-color-danger)',
@@ -220,18 +254,52 @@ const Stat = ({
   label,
   value,
   testId,
+  isDanger = false,
 }: {
   label: string;
   value: string;
   testId: string;
+  isDanger?: boolean;
 }) => (
   <div style={styles.stat}>
     <span style={styles.statLabel}>{label}</span>
-    <span style={styles.statValue} data-testid={testId}>
+    <span
+      style={
+        isDanger
+          ? { ...styles.statValue, color: 'var(--t-font-color-danger)' }
+          : styles.statValue
+      }
+      data-testid={testId}
+    >
       {value}
     </span>
   </div>
 );
+
+const formatDay = (day: string | null): string => {
+  if (day === null) {
+    return 'No date';
+  }
+
+  const [year, month, date] = day.slice(0, 10).split('-').map(Number);
+
+  return new Date(year, month - 1, date).toLocaleDateString('en-GB', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  });
+};
+
+const formatTimestamp = (timestamp: string | null): string =>
+  timestamp === null
+    ? ''
+    : new Date(timestamp).toLocaleString('en-GB', {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      });
 
 const BillableCheckbox = ({
   checked,
@@ -289,6 +357,13 @@ const TimeTracker = () => {
   const [manualHours, setManualHours] = useState('');
   const [manualNote, setManualNote] = useState('');
   const [manualBillable, setManualBillable] = useState(true);
+
+  const [payments, setPayments] = useState<Payment[]>([]);
+  const [paymentDate, setPaymentDate] = useState(() => todayLocalDateString());
+  const [paymentHours, setPaymentHours] = useState('');
+  const [paymentAmount, setPaymentAmount] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | ''>('');
+  const [paymentNote, setPaymentNote] = useState('');
 
   const isBusyRef = useRef(false);
   const refreshRequestRef = useRef(0);
@@ -350,10 +425,14 @@ const TimeTracker = () => {
   const refresh = useCallback(async () => {
     const requestId = ++refreshRequestRef.current;
 
-    const [runningEntries, opportunityEntries, name] = await Promise.all([
+    const [runningEntries, opportunityEntries, opportunityPayments, name] =
+      await Promise.all([
       memberId !== null ? fetchRunningEntries(memberId) : Promise.resolve([]),
       opportunityId !== null
         ? fetchOpportunityEntries(opportunityId)
+        : Promise.resolve([]),
+      opportunityId !== null
+        ? fetchOpportunityPayments(opportunityId)
         : Promise.resolve([]),
       contextOpportunityId !== null
         ? fetchOpportunityName(contextOpportunityId)
@@ -367,6 +446,7 @@ const TimeTracker = () => {
 
     setRunning(runningEntries[0] ?? null);
     setEntries(opportunityEntries);
+    setPayments(opportunityPayments);
     setOpportunityName(name);
     setIsLoaded(true);
   }, [memberId, opportunityId, contextOpportunityId]);
@@ -563,6 +643,68 @@ const TimeTracker = () => {
     () => summarizeEntries(entries, defaultRate),
     [entries, defaultRate],
   );
+
+  const balance = useMemo(
+    () => billingBalance(payments, summary.billableHours),
+    [payments, summary.billableHours],
+  );
+
+  const history = useMemo(() => paymentHistory(payments), [payments]);
+
+  const pendingPaidHoursChange = parsePaidHoursChange(
+    paymentHours,
+    balance.paidHours,
+  );
+
+  const handleAddPayment = () =>
+    runAction(async () => {
+      if (opportunityId === null) {
+        return;
+      }
+
+      const change = parsePaidHoursChange(paymentHours, balance.paidHours);
+
+      if (change === null) {
+        setError(
+          `Enter the new paid total (e.g. 10) or a change (e.g. +5). Paid now: ${formatHours(balance.paidHours)}`,
+        );
+
+        return;
+      }
+
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(paymentDate)) {
+        setError('Pick the day the client paid');
+
+        return;
+      }
+
+      const amount =
+        paymentAmount.trim() === '' ? null : parseAmountInput(paymentAmount);
+
+      if (paymentAmount.trim() !== '' && amount === null) {
+        setError('Enter the amount like 2750 or 2,750.50');
+
+        return;
+      }
+
+      await createPayment({
+        name: paymentNote.trim() === '' ? null : paymentNote.trim(),
+        hours: change,
+        amount: amount === null ? null : rateToMoney(amount, currencyCode),
+        paidOn: paymentDate,
+        method: paymentMethod === '' ? null : paymentMethod,
+        opportunityId,
+      });
+
+      setPaymentHours('');
+      setPaymentAmount('');
+      setPaymentNote('');
+      await enqueueSnackbar({
+        message: `Paid hours ${formatHoursChange(change)}, now ${formatHours(balance.paidHours + change)}`,
+        variant: 'success',
+      });
+      await refresh();
+    });
 
   const elapsedLabel =
     running?.startedAt != null
@@ -834,6 +976,137 @@ const TimeTracker = () => {
           ) : (
             <div style={styles.muted}>
               Choose an opportunity to start a timer or log time.
+            </div>
+          )}
+
+          {opportunityId !== null && (
+            <div style={styles.card} data-testid={TEST_IDS.payments}>
+              <p style={styles.sectionTitle}>Paid hours</p>
+              <div style={styles.stats}>
+                <Stat
+                  label="Paid"
+                  value={formatHours(balance.paidHours)}
+                  testId={TEST_IDS.paidHours}
+                />
+                <Stat
+                  label="Used (billable)"
+                  value={formatHours(balance.usedHours)}
+                  testId={TEST_IDS.usedHours}
+                />
+                <Stat
+                  label={balance.remainingHours < 0 ? 'Over by' : 'Remaining'}
+                  value={formatHours(Math.abs(balance.remainingHours))}
+                  isDanger={balance.remainingHours < 0}
+                  testId={TEST_IDS.remainingHours}
+                />
+                <Stat
+                  label="Received"
+                  value={formatMoney(balance.paidAmount, currencyCode)}
+                  testId={TEST_IDS.paidAmount}
+                />
+              </div>
+              <div style={styles.row}>
+                <input
+                  type="date"
+                  style={{ ...styles.input, flex: '0 0 150px' }}
+                  value={paymentDate}
+                  data-testid={TEST_IDS.paymentDateInput}
+                  onChange={(event) => setPaymentDate(event.target.value)}
+                />
+                <input
+                  style={{ ...styles.input, flex: '0 0 130px' }}
+                  placeholder={
+                    balance.paidHours === 0 ? 'Hours, e.g. 5' : 'New total or +5'
+                  }
+                  value={paymentHours}
+                  data-testid={TEST_IDS.paymentHoursInput}
+                  onChange={(event) => setPaymentHours(event.target.value)}
+                  onKeyDown={onEnter(() => void handleAddPayment())}
+                />
+                <input
+                  style={{ ...styles.input, flex: '0 0 130px' }}
+                  placeholder={`Amount (${currencyCode})`}
+                  inputMode="decimal"
+                  value={paymentAmount}
+                  data-testid={TEST_IDS.paymentAmountInput}
+                  onChange={(event) => setPaymentAmount(event.target.value)}
+                  onKeyDown={onEnter(() => void handleAddPayment())}
+                />
+                <select
+                  style={{ ...styles.input, flex: '0 0 150px' }}
+                  value={paymentMethod}
+                  data-testid={TEST_IDS.paymentMethodSelect}
+                  onChange={(event) =>
+                    setPaymentMethod(event.target.value as PaymentMethod | '')
+                  }
+                >
+                  <option value="">Payment method…</option>
+                  {Object.entries(PAYMENT_METHOD_LABELS).map(([value, label]) => (
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <input
+                style={styles.fullWidthInput}
+                placeholder="Note (package, invoice number…)"
+                value={paymentNote}
+                data-testid={TEST_IDS.paymentNoteInput}
+                onChange={(event) => setPaymentNote(event.target.value)}
+                onKeyDown={onEnter(() => void handleAddPayment())}
+              />
+              <div style={styles.row}>
+                <span style={styles.muted} data-testid={TEST_IDS.paymentPreview}>
+                  {pendingPaidHoursChange !== null
+                    ? `${formatHoursChange(pendingPaidHoursChange)}: ${formatHours(balance.paidHours)} → ${formatHours(balance.paidHours + pendingPaidHoursChange)} paid`
+                    : `Paid now: ${formatHours(balance.paidHours)}`}
+                </span>
+                <span style={styles.spacer} />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  startIcon={<IconCreditCard size={14} />}
+                  disabled={isBusy || pendingPaidHoursChange === null}
+                  data-testid={TEST_IDS.addPaymentButton}
+                  onClick={() => void handleAddPayment()}
+                >
+                  Save payment
+                </Button>
+              </div>
+              {history.length > 0 && (
+                <ul style={styles.history} data-testid={TEST_IDS.paymentHistory}>
+                  {history.map(({ payment, change, totalAfter }) => (
+                    <li key={payment.id} style={styles.historyLine}>
+                      <div style={styles.historyMain}>
+                        <strong>{formatDay(payment.paidOn)}</strong>
+                        <span>{formatHoursChange(change)}</span>
+                        <span style={styles.muted}>
+                          → {formatHours(totalAfter)} paid
+                        </span>
+                        {payment.amount?.amountMicros != null && (
+                          <span>
+                            {formatMoney(
+                              Number(payment.amount.amountMicros) / 1_000_000,
+                              payment.amount.currencyCode ?? currencyCode,
+                            )}
+                          </span>
+                        )}
+                        {payment.method !== null && (
+                          <span style={styles.muted}>
+                            {PAYMENT_METHOD_LABELS[payment.method] ?? payment.method}
+                          </span>
+                        )}
+                      </div>
+                      {payment.name !== null && <span>{payment.name}</span>}
+                      <span style={styles.muted}>
+                        Recorded {formatTimestamp(payment.createdAt)}
+                        {payment.createdBy?.name ? ` by ${payment.createdBy.name}` : ''}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
           )}
 

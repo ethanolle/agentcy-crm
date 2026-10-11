@@ -6,6 +6,9 @@ Logs time on opportunities in Agentcy's Twenty CRM.
 - **Time** tab on every opportunity: start/stop timer, manual entry ("1.5", "1:30", "90m"), totals (billable value, not invoiced yet), and the deal's entries as an editable table.
 - **Timer** button in the top bar: see, stop or start a timer from any page.
 - **Time entries** in the sidebar, with the views Unbilled (billable, not invoiced) and Timesheet (week calendar).
+- **Payment** object: Hours paid, Amount, Paid on, Payment method, Note, Opportunity. On the Time tab, a **Paid hours** card shows paid, used (billable hours logged), remaining or over, and amount received, with a form and the dated history; a Payments table sits under it. **Payments** in the sidebar lists them all.
+
+Payments are a log: going from 5 h to 10 h paid adds a +5 h row, so each change keeps its day and who recorded it. In the form, `10` sets the new paid total and `+5` / `-2` changes it.
 
 A running timer is an entry with no End, owned by the member (Who). Hours is what gets billed; editing Start or End does not change it. An empty Hourly rate counts as the `DEFAULT_HOURLY_RATE` app setting.
 

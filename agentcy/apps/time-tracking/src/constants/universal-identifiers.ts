@@ -91,6 +91,53 @@ export const DEAL_TIME_ENTRIES_WIDGET_VIEW = {
   },
 } as const;
 
+export const PAYMENT_OBJECT_ID = '566fdf38-db49-4bb4-b6ce-a8734e80b76f';
+
+export const PAYMENT_FIELD_IDS = {
+  name: 'a1f33a1f-c816-408f-b3d0-fb618a3c2837',
+  hours: 'c52cc126-1d98-4b1f-946f-5693df80b0f4',
+  amount: 'ae82c87c-cf43-45b7-8118-4cebfe6afb3b',
+  paidOn: 'c60de978-5e1e-4e98-a692-36bb5f78c4de',
+  method: '5647ded7-608d-4354-a528-29fd3c0d5c88',
+  opportunity: '0857dd45-9789-4191-9b9c-743e0c53b6e0',
+} as const;
+
+export const PAYMENT_METHOD_OPTION_IDS = {
+  bankTransfer: '6f55b104-dcfe-4396-b660-7116ce8c3701',
+  creditCard: '5402692f-e883-4e19-8667-50c9f40acf5f',
+  bit: 'b7660ba4-1611-426f-b5e3-a502f2f4bd6f',
+  paypal: 'ef77046d-393c-491e-8609-0d6d0c2b852e',
+  cash: 'd434bee9-4660-4719-8779-9b5bd029b7a8',
+  check: '0e223029-1f2b-440a-8927-0903bec04903',
+  other: '6479b1dd-dfc2-42b4-bc14-c14d1d2976b0',
+} as const;
+
+export const OPPORTUNITY_PAYMENTS_FIELD_ID =
+  '50a6e212-7aae-405c-95f7-26e5f412bfbe';
+
+export const OPPORTUNITY_PAYMENTS_WIDGET_ID =
+  '1b42d422-eeba-4b74-94da-fddcb3c43580';
+
+export const PAYMENTS_NAVIGATION_MENU_ITEM_ID =
+  '12f8bfc8-987a-425c-adfe-63c2859a6b9d';
+
+export const DEAL_PAYMENTS_WIDGET_VIEW = {
+  id: 'c895f121-e170-4fe3-8309-895bf15cc435',
+  fields: {
+    name: 'b21715b5-6893-4c11-9bfc-393b5df65e8b',
+    paidOn: 'c8d0da81-6be2-4c5c-b655-6488c3762dc4',
+    hours: '9da71546-9085-4241-bf53-bc9f22510af1',
+    amount: '987a13c4-86db-49ab-b8f1-059f2bda2c60',
+    method: 'c449fd29-8e70-4ae6-8289-434386698242',
+  },
+  filters: {
+    opportunityIsCurrentRecord: 'b4244143-60fb-43a6-8b0a-0a4b071b4224',
+  },
+  sorts: {
+    paidOn: 'e3809c4b-5fc3-45c3-a733-f17df063150c',
+  },
+} as const;
+
 export const TIMESHEET_VIEW = {
   id: 'f58245fe-2463-4566-91ea-f043e05de9a1',
   fields: {
